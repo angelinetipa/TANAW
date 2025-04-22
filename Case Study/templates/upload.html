@@ -523,12 +523,12 @@
          }
 
          /* Animation for button text/icon change */
-         .loading-icon {
+        .loading-icon {
              margin-right: 10px;
              animation: fa-spin 2s infinite linear; /* Font Awesome spin animation */
          }
 
-          .success-icon {
+        .success-icon {
               margin-right: 10px;
               animation: bounce-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Simple bounce animation */
           }
@@ -550,53 +550,76 @@
 
 
         .alert {
-            background-color: var(--deped-error);
-            color: white;
-            padding: 15px;
+            position: relative;
+            display: flex; 
+            align-items: center;
+            max-width: 100%;
+            color: var(--deped-white);
+            padding: 15px 40px 15px 50px; 
             margin-bottom: 20px;
             border-radius: var(--border-radius-sm);
-            font-size: 1rem;
+            font-size: 0.8rem;
             font-weight: 600;
             text-align: left;
-             box-shadow: var(--box-shadow-sm);
-             border-left: 5px solid #c82333; /* Darker red */
-             display: flex; /* Align icon and text */
-             align-items: center;
-             gap: 15px; /* Space between icon/list */
+            box-shadow: var(--box-shadow-sm);
         }
 
-        .alert i {
-            font-size: 1.5rem; /* Larger icon */
-            color: #f5c6cb; /* Lighter red icon */
+        .alert-success {
+            background-color: var(--deped-success);
+        }
+
+        .alert-error {
+            background-color: var(--deped-error);
+            border-left: 5px solid #c82333;
         }
 
         .alert ul {
             list-style-type: none;
             margin: 0;
             padding: 0;
-            flex-grow: 1; /* Allow list to take available space */
         }
 
         .alert li {
             font-size: 1rem;
-             margin-bottom: 5px; /* Space between list items */
-             padding-left: 0; /* Remove default list padding */
-             position: relative; /* Needed for custom bullet */
-        }
-        
-        .alert li:last-child {
-             margin-bottom: 0;
+            padding-left: 20px; 
+            position: relative;
         }
 
-         .alert li::before {
-            content: "\f06a"; /* Exclamation Circle */
+        .alert-success li::before,
+        .alert-error li::before {
+            position: absolute;
+            left: -30px; 
+            top: 50%;
+            transform: translateY(-50%);
             font-family: "Font Awesome 6 Free";
             font-weight: 900;
-            margin-right: 8px;
-             color: inherit; /* Inherit color from alert */
-             display: inline-block;
-             width: 1em; /* Give bullet some space */
-             margin-left: -1em; /* Pull bullet back to the left */
+            font-size: 1.7rem; 
+            margin-right: 10px;
+            line-height: 1;
+        }
+
+        .alert-success li::before {
+            content: "\f058"; /* check-circle */
+        }
+
+        .alert-error li::before {
+            content: "\f06a"; /* times-circle */
+        }
+
+        .alert .close-btn {
+            position: absolute;
+            top: 8px;
+            right: 10px;
+            font-size: 1.5rem;
+            color: white;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .alert .close-btn:hover {
+            opacity: 0.7;
         }
 
         #toast-container {
@@ -994,6 +1017,28 @@
         <div class="admin-panel-container">
             <div class="upload-section fade-in-on-scroll" id="data-cleaning">
                 <h2><i class="fas fa-broom"></i> Clean Enrollment Data</h2>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, (message, level) in messages %}
+                            {% if category == 'cleaning' %}
+                                <div class="alert alert-{{ level }}">
+                                    <span class="close-btn" onclick="this.parentElement.style.display='none';">&times;</span>
+                                    <ul><li>{{ message }}</li></ul>
+                                </div>
+                                <script>
+                                    // Auto-dismiss flash messages after 4 seconds
+                                    setTimeout(() => {
+                                      document.querySelectorAll('.alert').forEach(el => {
+                                        el.style.transition = 'opacity 0.5s ease';
+                                        el.style.opacity = '0';
+                                        setTimeout(() => el.remove(), 500); // remove after fade out
+                                      });
+                                    }, 6000);
+                                </script> 
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
                 <form action="/clean" method="POST" enctype="multipart/form-data" id="cleanForm">
                     <div class="sample-template">
                         <a href="{{ url_for('download_template') }}" class="sample-template-button">
@@ -1022,7 +1067,7 @@
                                     <ul>
                                     <li><strong>K - G6:</strong> [Male, Female]</li>
                                     <li><strong>Elem NG:</strong> [Male, Female]</li>
-                                    <li><strong>G7 – G10:</strong> [Male, Female]</li>
+                                    <li><strong>G7 - G10:</strong> [Male, Female]</li>
                                     <li><strong>JHS NG:</strong> [Male, Female]</li>
                                     <li><strong>G11 - G12:</strong> ABM, HUMSS, STEM, GAS, PBM, TVL, SPORTS, ARTS [Male, Female]</li>
                                     </ul>
@@ -1047,15 +1092,26 @@
 
             <div class="upload-section fade-in-on-scroll" id="file-upload">
                 <h2><i class="fas fa-database"></i> Upload Enrollment Data</h2>
-                {% with messages = get_flashed_messages() %}
+                {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
-                        <div class="alert">
-                             <i class="fas fa-exclamation-triangle"></i> <ul>
-                                {% for message in messages %}
-                                    <li>{{ message }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
+                        {% for category, (message, level) in messages %}
+                            {% if category == 'upload' %}
+                                <div class="alert alert-{{ level }}">
+                                    <span class="close-btn" onclick="this.parentElement.style.display='none';">&times;</span>
+                                    <ul><li>{{ message }}</li></ul>
+                                </div>
+                                <script>
+                                    // Auto-dismiss flash messages after 4 seconds
+                                    setTimeout(() => {
+                                      document.querySelectorAll('.alert').forEach(el => {
+                                        el.style.transition = 'opacity 0.5s ease';
+                                        el.style.opacity = '0';
+                                        setTimeout(() => el.remove(), 500); // remove after fade out
+                                      });
+                                    }, 6000);
+                                </script> 
+                            {% endif %}
+                        {% endfor %}
                     {% endif %}
                 {% endwith %}
                 <form action="/upload" method="POST" enctype="multipart/form-data" id="uploadForm">
@@ -1206,51 +1262,68 @@
             }
 
 
-            // --- Button Submission with Delay and Animation for Upload Forms ---
-            const handleUploadSubmit = (e, form, fileInputId, defaultButtonHtml) => {
-                // Prevent default submission initially to handle it with UI updates
+            // --- Clean Form Handler ---
+        if (cleanForm) {
+            const cleanButtonHtml = cleanForm.querySelector('button[type="submit"]').innerHTML;
+            cleanForm.addEventListener('submit', function (e) {
                 e.preventDefault();
-
-                const fileInput = document.getElementById(fileInputId);
-                const submitButton = form.querySelector('button[type="submit"]');
+                const fileInput = document.getElementById('uncleaned_file_input');
+                const submitButton = cleanForm.querySelector('button[type="submit"]');
 
                 if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
                     showToast('Please select a file to upload.', 'error');
-                    return; // Stop if no file is selected
+                    return;
                 }
 
-                // Show loading state immediately
                 submitButton.disabled = true;
                 submitButton.innerHTML = '<i class="fas fa-spinner fa-spin loading-icon"></i> Uploading...';
-                showToast(`Preparing "${fileInput.files[0].name}" for upload...`, 'info', 6000);
+                showToast(`Preparing "${fileInput.files[0].name}" for upload...`, 'info', 10000);
 
-                 setTimeout(() => {
-                     form.submit();
-                      setTimeout(() => {
-                          submitButton.innerHTML = '<i class="fas fa-check-circle success-icon"></i> Complete!';
-                          showToast('Upload process initiated. Check server response or dashboard.', 'success', 10000);
+                setTimeout(() => {
+                    cleanForm.submit();
+                    setTimeout(() => {
+                        submitButton.innerHTML = '<i class="fas fa-check-circle success-icon"></i> Complete!';
+                        showToast('Cleaning process is done. Kindly wait for the downloaded file.', 'success', 10000);
+                        setTimeout(() => {
+                            submitButton.disabled = false;
+                            submitButton.innerHTML = cleanButtonHtml;
+                        }, 1500);
+                    }, 10000);
+                }, 50);
+            });
+        }
 
-                           setTimeout(() => {
-                               submitButton.disabled = false;
-                               submitButton.innerHTML = defaultButtonHtml; 
-                           }, 1500); 
+        // --- Upload Form Handler ---
+        if (uploadForm) {
+            const uploadButtonHtml = uploadForm.querySelector('button[type="submit"]').innerHTML;
+            uploadForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const fileInput = document.getElementById('upload_file_input');
+                const submitButton = uploadForm.querySelector('button[type="submit"]');
 
-                      }, 5000); 
+                if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+                    showToast('Please select a file to upload.', 'error');
+                    return;
+                }
 
-                 }, 50); 
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin loading-icon"></i> Uploading...';
+                showToast(`Preparing "${fileInput.files[0].name}" for upload...`, 'info', 10000);
 
-            };
+                setTimeout(() => {
+                    uploadForm.submit();
+                    setTimeout(() => {
+                        submitButton.innerHTML = '<i class="fas fa-check-circle success-icon"></i> Complete!';
+                        showToast('Uploading process is done. Kindly go to dashboard for updates.', 'success', 10000);
+                        setTimeout(() => {
+                            submitButton.disabled = false;
+                            submitButton.innerHTML = uploadButtonHtml;
+                        }, 1500);
+                    }, 10000);
+                }, 50);
+            });
+        }
 
-            if(cleanForm) {
-                 const cleanButtonHtml = cleanForm.querySelector('button[type="submit"]').innerHTML;
-                 cleanForm.addEventListener('submit', (e) => handleUploadSubmit(e, cleanForm, 'uncleaned_file_input', cleanButtonHtml));
-            }
-
-
-            if(uploadForm) {
-                 const uploadButtonHtml = uploadForm.querySelector('button[type="submit"]').innerHTML;
-                 uploadForm.addEventListener('submit', (e) => handleUploadSubmit(e, uploadForm, 'upload_file_input', uploadButtonHtml));
-            }
 
             if (rerunForm && rerunButton) {
                 const originalRerunButtonHtml = rerunButton.innerHTML; 

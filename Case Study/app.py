@@ -6,6 +6,7 @@ from data_config import get_dataset_path, fetch_enrollment_records_from_csv, fet
 from data_cleaning import clean_data
 from datetime import datetime
 from report import create_dash_app_report
+from column_mapper import read_csv, detect_header, rename_columns, validate_columns, FLEXIBLE_COLUMN_MAP
 
 app = Flask(__name__)
 app.secret_key = 'secret123'
@@ -74,44 +75,36 @@ def upload():
     dataset_path = os.path.join(UPLOAD_FOLDER, 'Cleaned_School_DataSet.csv')
     last_updated = None
     if os.path.exists(dataset_path):
-        last_updated = datetime.fromtimestamp(os.path.getmtime(dataset_path)).strftime('%Y-%m-%d %H:%M:%S')
+        last_updated = datetime.fromtimestamp(os.path.getmtime(dataset_path)).strftime('%Y-%m-%d %H:%M')
 
     if request.method == "POST":
         if 'file' not in request.files:
-            flash('No file part')
+            flash(('No file part', 'error'), "upload")
             return redirect(request.url)
         file = request.files['file']
-       
         if file.filename == '':
-            flash('No selected file')
+            flash(('No selected file', 'error'), "upload")
             return redirect(request.url)
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            raw_path = os.path.join(UPLOAD_FOLDER, 'temp_' + filename)
-            file.save(raw_path)
 
+        if file and allowed_file(file.filename):
             try:
-                # Clean the uploaded file
-                cleaned_path = clean_data(raw_path)
+                # Read and validate
+                df = read_csv(file)
+                df = detect_header(df, verbose=True)
+                df = rename_columns(df)
+                validate_columns(df, list(FLEXIBLE_COLUMN_MAP.keys()), verbose=True)
 
-                # Move cleaned file to be the active dataset
-                os.replace(cleaned_path, dataset_path)
+                # Save if valid
+                df.to_csv(dataset_path, index=False)
+                flash(("Uploading process is done. Kindly go to dashboard for updates.", 'success'), "upload")
+                last_updated = datetime.now().strftime('%Y-%m-%d %H:%M')
+                return render_template("upload.html", last_updated=last_updated)
 
-                # Optional: Clean up the raw temp file if needed
-                os.remove(raw_path)
             except Exception as e:
-                            flash(f"Data cleaning failed: {str(e)}")
-                            return redirect(request.url)
+                flash(("Error:  Updating dashboard failed. Uploaded file has missing or incorrect columns.", 'error'), "upload")
+                return redirect(request.url)
 
-            return render_template("upload.html", last_updated=last_updated)
-        
-        if file and allowed_file(file.filename):
-            file.save(dataset_path)
-            flash('CSV file uploaded successfully. Rerun TANAW to activate it!')
-            last_updated = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            return render_template("upload.html", last_updated=last_updated)
-
-        flash("Invalid file type. Please upload a .csv file.")
+        flash(("Invalid file type. Please upload a .csv file.", 'error'), "upload")
         return redirect(request.url)
 
     return render_template("upload.html", last_updated=last_updated)
@@ -126,14 +119,21 @@ def clean():
             uploaded_file.save(raw_path)
 
             try:
-                cleaned_path = clean_data(raw_path)
+                # Read CSV and rename columns
+                df = read_csv(raw_path)
+                df = detect_header(df, verbose=True)
+                df = rename_columns(df)
+                validate_columns(df, list(FLEXIBLE_COLUMN_MAP.keys()), verbose=True)
+
+                # Clean the renamed DataFrame
+                cleaned_path = clean_data(df)
                 return send_file(cleaned_path, as_attachment=True)
 
             except Exception as e:
-                flash(f"Data cleaning failed: {str(e)}")
+                flash((f"Error:  Data cleaning failed. Uploaded file has missing or incorrect columns.", 'error'), "cleaning")
                 return redirect(request.url)
 
-        flash("No valid file selected for cleaning.")
+        flash(("No valid file selected for cleaning.", 'error'), "cleaning")
         return redirect(request.url)
 
     return render_template('upload.html')
